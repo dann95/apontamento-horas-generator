@@ -1,47 +1,34 @@
-const Excel = require('exceljs');
+const   Excel = require('exceljs'),
+        Utils = require('./src/utils'),
+        Constants = require('./src/constants');
 
-function getBusinessDaysOfMonth(year, month) {
-    const businessDays = [];
-    const daysInMonth = new Date(year, month, 0).getDate();
+const {getBusinessDaysOfMonth, isValidMonth, isValidYear} = Utils;
+const {FIRST_FILLABLE_LINE, TOTAL_SUM_LINE_INITIAL_INDEX, SHEET_DIR} = Constants;
 
-    for (let day = 1; day <= daysInMonth; day++) {
-        const currentDate = new Date(year, month - 1, day);
-        const dayOfWeek = currentDate.getDay();
-
-        // Check if the current day is a business day (Monday to Friday)
-        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-            const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}`;
-            businessDays.push(formattedDate);
-        }
-    }
-    return businessDays;
-}
-
-
-var workbook = new Excel.Workbook();
-workbook.xlsx.readFile("./samples/sample.xlsx").then(function () {
-    const businessDays = getBusinessDaysOfMonth(2024, 4);
-    const beginIndex = 7; //.length
-    const initialSumColumnLine = 8;
+async function main() {
+    const args = getArgs();
+    const workbook = new Excel.Workbook();
+    await workbook.xlsx.readFile(SHEET_DIR);
+    const businessDays = getBusinessDaysOfMonth(args[1], args[0]);
     const insertLineCount = businessDays.length;
     const worksheet = workbook.getWorksheet(1);
 
 
-    const firstLineWithHours = worksheet.getRow(beginIndex);
+    const firstLineWithHours = worksheet.getRow(FIRST_FILLABLE_LINE);
     firstLineWithHours.getCell(1).value = 'GER0175';
     firstLineWithHours.getCell(2).value = 'Gerdau Scrapp';
     firstLineWithHours.getCell(3).value = 'Thiago Albieri';
     firstLineWithHours.getCell(4).value = 'Consultoria de front-end e back-end';
 
-    worksheet.duplicateRow(beginIndex, insertLineCount - 1, true);
+    worksheet.duplicateRow(FIRST_FILLABLE_LINE, insertLineCount - 1, true);
 
     for(const [indexOfDate, dateValue] of Object.entries(businessDays)) {
-        const row = worksheet.getRow(Number(beginIndex) + Number(indexOfDate));
+        const row = worksheet.getRow(Number(FIRST_FILLABLE_LINE) + Number(indexOfDate));
         row.getCell(5).value = dateValue;
         row.commit();
     }
 
-    const finalSumRow = worksheet.getRow(initialSumColumnLine + insertLineCount - 1);
+    const finalSumRow = worksheet.getRow(TOTAL_SUM_LINE_INITIAL_INDEX + insertLineCount - 1);
 
     finalSumRow.getCell(6).value = {
         formula: `SUM(F7:F${7 + insertLineCount - 1})`
@@ -49,5 +36,45 @@ workbook.xlsx.readFile("./samples/sample.xlsx").then(function () {
 
     finalSumRow.commit();
 
-    return workbook.xlsx.writeFile("resultado.xlsx");
-});
+    await workbook.xlsx.writeFile("resultado.xlsx");
+}
+
+function printUsage() {
+    console.log(`Apontamento de horas generator\nUsage:\nnode index.js MONTH YEAR\nexample:\n> node index.js 1 2024`);
+}
+
+/**
+ *
+ * @returns {boolean}
+ */
+function validateInput() {
+
+    if(process.argv.length !== 4) {
+        return false;
+    }
+    const args = getArgs();
+
+    return isValidMonth(args[0]) && isValidYear(args[1]);
+}
+
+/**
+ *
+ * @returns {number[]}
+ */
+function getArgs() {
+    return [Number(process.argv[2]), Number(process.argv[3])];
+}
+
+(async () => {
+    try {
+        if(validateInput()) {
+            await main();
+        } else {
+            printUsage();
+        }
+        process.exit(0);
+    } catch (e) {
+        console.error(e);
+        process.exit(1);
+    }
+})();
