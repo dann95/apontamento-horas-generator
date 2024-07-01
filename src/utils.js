@@ -42,6 +42,10 @@ function getBusinessDaysOfMonth(year, month) {
     return businessDays;
 }
 
+/**
+ *
+ * @type {{getBusinessDaysOfMonth: (function(number, number): *[]), isValidMonth: (function((string|number)): boolean), isValidYear: (function((string|number)): boolean)}}
+ */
 const Utils = {
     getBusinessDaysOfMonth,
     isValidMonth,
